@@ -1,0 +1,130 @@
+@base = http://localhost:5249
+@token = {{login.response.body.$.accessToken}}
+
+### ========== 1. Công khai (không cần đăng nhập) ==========
+
+### Homepage
+GET {{base}}/api/public/home
+Accept: application/json
+
+### Đăng ký
+# @name register
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "user1@test.com",
+  "password": "Test@123",
+  "fullName": "Người dùng 1",
+  "age": 20,
+  "phoneNumber": "0901234567"
+}
+
+### Đăng nhập (email hoặc username)
+# @name login
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@test.com",
+  "password": "Test@123"
+}
+
+### ========== 2. Cần đăng nhập (dùng token từ login) ==========
+
+### Lấy thông tin user hiện tại
+GET {{base}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### Danh sách trang nội dung
+GET {{base}}/api/content/pages
+Authorization: Bearer {{token}}
+
+### Xem nội dung trang (slug: chuong-5)
+GET {{base}}/api/content/pages/chuong-5
+Authorization: Bearer {{token}}
+
+### Cập nhật profile
+PUT {{base}}/api/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "user1+updated@test.com",
+  "fullName": "Ten moi",
+  "age": 22,
+  "phoneNumber": "0912345678"
+}
+
+### Gửi trả lời câu hỏi (để thống kê)
+POST {{base}}/api/responses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "questionKey": "cau-1",
+  "answerText": "Câu trả lời mẫu"
+}
+
+### Chat với AI (Gemini)
+POST {{base}}/api/chat
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "message": "Cơ cấu xã hội - giai cấp là gì?"
+}
+
+### ========== 3. Tracking (frontend gọi khi xem trang) ==========
+
+### Ghi nhận page view
+POST {{base}}/api/track/pageview
+Content-Type: application/json
+
+{
+  "path": "/",
+  "referrer": ""
+}
+
+### ========== 4. Admin (cần đăng nhập bằng tài khoản admin) ==========
+
+### Đăng nhập admin (đổi email/password theo SeedAdmin của bạn)
+# @name adminLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+    "Email": "Admin@example.com",
+    "Password": "Admin123!"
+}
+
+### Thống kê realtime
+GET {{base}}/api/admin/stats/realtime
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+### Danh sách user (có thể ?q=keyword)
+GET {{base}}/api/admin/users?q=
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+### Đổi role user (id = GUID của user)
+# POST {{base}}/api/admin/users/{userId}/role
+# Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+# Content-Type: application/json
+# {"role": "viewer"}
+
+### Vô hiệu hóa user
+# POST {{base}}/api/admin/users/{userId}/disabled
+# Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+# Content-Type: application/json
+# {"disabled": true}
+
+### Sửa thông tin user (admin)
+# PATCH {{base}}/api/admin/users/{userId}
+# Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+# Content-Type: application/json
+# {"fullName": "Tên mới", "email": "new@test.com"}
+
+
+### Chat history (current user)
+GET {{base}}/api/chat/history?page=1&pageSize=50
+Authorization: Bearer {{token}}

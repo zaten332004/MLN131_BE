@@ -1,0 +1,8 @@
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\MLN131.Api.csproj.AssemblyReference.cache
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\rpswa.dswa.cache.json
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\MLN131.Api.GeneratedMSBuildEditorConfig.editorconfig
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\MLN131.Api.AssemblyInfoInputs.cache
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\MLN131.Api.AssemblyInfo.cs
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\MLN131.Api.csproj.CoreCompileInputs.cache
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\MLN131.Api.MvcApplicationPartsAssemblyInfo.cs
+d:\GitHub\MLN131_BE\.build-obj\Debug\net8.0\MLN131.Api.MvcApplicationPartsAssemblyInfo.cache
