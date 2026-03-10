@@ -57,19 +57,42 @@ public sealed class GeminiChatService
         var json = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"Gemini error: {(int)resp.StatusCode} {resp.ReasonPhrase} - {json}");
+            var providerMessage = TryExtractProviderErrorMessage(json);
+            var suffix = string.IsNullOrWhiteSpace(providerMessage) ? "" : $" - {providerMessage}";
+            throw new InvalidOperationException($"Gemini error: {(int)resp.StatusCode} {resp.ReasonPhrase}{suffix}");
         }
 
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
-        var text = root
-            .GetProperty("candidates")[0]
-            .GetProperty("content")
-            .GetProperty("parts")[0]
-            .GetProperty("text")
-            .GetString();
+        if (root.TryGetProperty("error", out var errorEl))
+        {
+            var msg = errorEl.TryGetProperty("message", out var msgEl) ? msgEl.GetString() : null;
+            throw new InvalidOperationException($"Gemini error: {msg ?? "Unknown provider error."}");
+        }
 
+        if (!root.TryGetProperty("candidates", out var candidatesEl) ||
+            candidatesEl.ValueKind != JsonValueKind.Array ||
+            candidatesEl.GetArrayLength() == 0)
+        {
+            throw new InvalidOperationException("Unexpected Gemini response format: missing candidates.");
+        }
+
+        var candidate0 = candidatesEl[0];
+        if (!candidate0.TryGetProperty("content", out var contentEl))
+        {
+            throw new InvalidOperationException("Unexpected Gemini response format: missing content.");
+        }
+
+        if (!contentEl.TryGetProperty("parts", out var partsEl) ||
+            partsEl.ValueKind != JsonValueKind.Array ||
+            partsEl.GetArrayLength() == 0)
+        {
+            throw new InvalidOperationException("Unexpected Gemini response format: missing parts.");
+        }
+
+        var part0 = partsEl[0];
+        var text = part0.TryGetProperty("text", out var textEl) ? textEl.GetString() : null;
         return text?.Trim() ?? "";
     }
 
@@ -118,5 +141,28 @@ public sealed class GeminiChatService
     private int GetMaxOutputTokens()
     {
         return Math.Clamp(_opt.MaxOutputTokens, 256, 4096);
+    }
+
+    private static string? TryExtractProviderErrorMessage(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("error", out var errorEl) &&
+                errorEl.TryGetProperty("message", out var msgEl))
+            {
+                var msg = msgEl.GetString();
+                if (string.IsNullOrWhiteSpace(msg)) return null;
+                return msg.Length <= 300 ? msg : msg[..300];
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return null;
     }
 }

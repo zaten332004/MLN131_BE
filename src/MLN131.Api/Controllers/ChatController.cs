@@ -17,12 +17,18 @@ public sealed class ChatController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly GeminiChatService _gemini;
     private readonly TimeProvider _time;
+    private readonly ILogger<ChatController> _logger;
 
-    public ChatController(ApplicationDbContext db, GeminiChatService gemini, TimeProvider time)
+    public ChatController(
+        ApplicationDbContext db,
+        GeminiChatService gemini,
+        TimeProvider time,
+        ILogger<ChatController> logger)
     {
         _db = db;
         _gemini = gemini;
         _time = time;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -57,10 +63,46 @@ public sealed class ChatController : ControllerBase
         });
         await _db.SaveChangesAsync(ct);
 
-        var answer = await _gemini.GenerateAsync(
-            msg,
-            history.Select(x => (x.Role, x.Content)),
-            ct);
+        string answer;
+        try
+        {
+            answer = await _gemini.GenerateAsync(
+                msg,
+                history.Select(x => (x.Role, x.Content)),
+                ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Missing config: Gemini:ApiKey", StringComparison.Ordinal))
+        {
+            _logger.LogWarning(ex, "Gemini API key is missing.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "AI chat is not configured. Please set Gemini__ApiKey (environment variable) or Gemini:ApiKey (appsettings)."
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to reach Gemini API.");
+            return StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                message = "AI service is unreachable. Please try again later."
+            });
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Gemini request timed out.");
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new
+            {
+                message = "AI service timed out. Please try again."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Gemini chat failed.");
+            return StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                message = "AI service error. Please try again later."
+            });
+        }
 
         _db.ChatMessages.Add(new ChatMessage
         {
