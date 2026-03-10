@@ -64,6 +64,7 @@ builder.Services.AddScoped<VisitSessionMiddleware>();
 builder.Services.AddScoped<DisabledUserMiddleware>();
 builder.Services.AddHostedService<SessionFinalizerHostedService>();
 builder.Services.AddHostedService<StatsBroadcastHostedService>();
+builder.Services.AddHostedService<DatabaseSeederHostedService>();
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 if (string.IsNullOrWhiteSpace(jwt.SigningKey))
@@ -189,7 +190,5 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<StatsHub>("/hubs/stats");
 app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.NoContent()).RequireCors();
-
-await SeedData.EnsureSeededAsync(app.Services);
 
 app.Run();

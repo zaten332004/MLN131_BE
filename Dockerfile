@@ -21,6 +21,11 @@ RUN dotnet publish "src/MLN131.Api/MLN131.Api.csproj" -c Release -o /app/publish
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=publish /app/publish .
 
 EXPOSE 8080
