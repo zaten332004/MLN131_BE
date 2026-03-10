@@ -13,11 +13,13 @@ public sealed class VisitSessionMiddleware : IMiddleware
 
     private readonly ApplicationDbContext _db;
     private readonly TimeProvider _time;
+    private readonly IWebHostEnvironment _env;
 
-    public VisitSessionMiddleware(ApplicationDbContext db, TimeProvider time)
+    public VisitSessionMiddleware(ApplicationDbContext db, TimeProvider time, IWebHostEnvironment env)
     {
         _db = db;
         _time = time;
+        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -35,11 +37,15 @@ public sealed class VisitSessionMiddleware : IMiddleware
         if (string.IsNullOrWhiteSpace(visitorId) || visitorId.Length > 64)
         {
             visitorId = Guid.NewGuid().ToString("N");
+
+            // For cross-site FE (e.g. Vercel domain -> API domain), cookies require SameSite=None; Secure=true.
+            var isProdLike = !_env.IsDevelopment();
+
             context.Response.Cookies.Append(VisitorCookieName, visitorId, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = context.Request.IsHttps,
-                SameSite = SameSiteMode.Lax,
+                Secure = isProdLike || context.Request.IsHttps,
+                SameSite = isProdLike ? SameSiteMode.None : SameSiteMode.Lax,
                 Expires = now.AddDays(365),
                 IsEssential = true,
             });
