@@ -14,14 +14,14 @@ services:
       - mln131_sql_logs:/var/opt/mssql/log
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "(/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${SA_PASSWORD}\" -Q \"SELECT 1\" >/dev/null 2>&1) || (/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${SA_PASSWORD}\" -Q \"SELECT 1\" >/dev/null 2>&1)"]
+      test: ["CMD-SHELL", "bash -lc 'cat < /dev/null > /dev/tcp/localhost/1433'"]
       interval: 10s
       timeout: 3s
       retries: 10
       start_period: 60s
 
   sql-init:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql-tools:latest
     container_name: mln131_sql_init_prod
     depends_on:
       sql-server:
