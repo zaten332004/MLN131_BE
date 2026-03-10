@@ -188,6 +188,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<StatsHub>("/hubs/stats");
+app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.NoContent()).RequireCors();
 
 await SeedData.EnsureSeededAsync(app.Services);
 
