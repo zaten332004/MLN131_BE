@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Use this when you already have SQL Server / SQLEXPRESS running on the host machine
 # (e.g. Windows) with login `sa` / `12345`, and you only want to run the backend in Docker.
 #
@@ -16,4 +14,3 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       ConnectionStrings__Default: Server=host.docker.internal,1433;Database=MLN131;User Id=sa;Password=12345;TrustServerCertificate=True;MultipleActiveResultSets=true;Connection Timeout=30;
-
