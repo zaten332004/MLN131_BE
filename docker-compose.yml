@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mln131_sql_server
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+    networks:
+      - mln131_network
+    volumes:
+      - mln131_sql_data:/var/opt/mssql
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mln131_backend
+    ports:
+      - "8000:8080"
+    depends_on:
+      - sql-server
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: Server=sql-server;Database=MLN131;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Jwt__Issuer: MLN131
+      Jwt__Audience: MLN131
+      Jwt__AccessTokenMinutes: 120
+      Gemini__ApiKey: ${GEMINI_API_KEY:-}
+      SeedAdmin__Email: ${SEED_ADMIN_EMAIL:-}
+      SeedAdmin__Password: ${SEED_ADMIN_PASSWORD:-}
+    networks:
+      - mln131_network
+
+networks:
+  mln131_network:
+    driver: bridge
+
+volumes:
+  mln131_sql_data:

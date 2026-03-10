@@ -26,3 +26,8 @@ Desktop.ini
 
 # Runtime uploads (user-generated)
 **/wwwroot/uploads/
+
+# Local environment variables
+.env
+.env.*
+!.env.example
