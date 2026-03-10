@@ -24,3 +24,5 @@ Desktop.ini
 # Logs
 *.log
 
+# Runtime uploads (user-generated)
+**/wwwroot/uploads/

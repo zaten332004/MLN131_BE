@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MLN131.Api.Common;
 using MLN131.Api.Contracts.Stats;
 using MLN131.Api.Data;
 
@@ -6,7 +7,8 @@ namespace MLN131.Api.Services;
 
 public sealed class StatsService
 {
-    private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(2);
+    // If you want "instant" online counts on FE, call /api/track/pageview periodically (heartbeat).
+    private static readonly TimeSpan OnlineWindow = TimeSpan.FromSeconds(30);
 
     private readonly ApplicationDbContext _db;
     private readonly TimeProvider _time;
@@ -25,6 +27,8 @@ public sealed class StatsService
 
         var onlineSessionsQuery = _db.VisitSessions.AsNoTracking()
             .Where(x => x.EndedAt == null && x.LastSeenAt >= onlineCutoff);
+
+        onlineSessionsQuery = ExcludeAdminSessions(onlineSessionsQuery);
 
         var visitorsOnline = await onlineSessionsQuery.CountAsync(ct);
         var loggedInOnline = await onlineSessionsQuery.Where(x => x.UserId != null).CountAsync(ct);
@@ -58,6 +62,20 @@ public sealed class StatsService
             DistinctUsersAnsweredLast24h = distinctAnswered24h,
             AvgSessionDurationSecondsLast24h = avgSeconds,
         };
+    }
+
+    private IQueryable<VisitSession> ExcludeAdminSessions(IQueryable<VisitSession> query)
+    {
+        var adminNormalized = Roles.Admin.ToUpperInvariant();
+        var adminRoleIds = _db.Roles.AsNoTracking()
+            .Where(r => r.NormalizedName == adminNormalized)
+            .Select(r => r.Id);
+
+        var adminUserIds = _db.UserRoles.AsNoTracking()
+            .Where(ur => adminRoleIds.Contains(ur.RoleId))
+            .Select(ur => ur.UserId);
+
+        return query.Where(s => s.UserId == null || !adminUserIds.Contains(s.UserId.Value));
     }
 }
 

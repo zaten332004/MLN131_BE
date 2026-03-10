@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using MLN131.Api.Common;
 using MLN131.Api.Data;
 
 namespace MLN131.Api.Middleware;
@@ -21,6 +22,13 @@ public sealed class VisitSessionMiddleware : IMiddleware
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        // Do not track admin activity as page views / online visitors.
+        if (context.User?.Identity?.IsAuthenticated == true && context.User.IsInRole(Roles.Admin))
+        {
+            await next(context);
+            return;
+        }
+
         var now = _time.GetUtcNow();
 
         var visitorId = context.Request.Cookies[VisitorCookieName];
@@ -38,7 +46,7 @@ public sealed class VisitSessionMiddleware : IMiddleware
         }
 
         Guid? userId = null;
-        var userIdStr = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userIdStr = context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (Guid.TryParse(userIdStr, out var parsed))
         {
             userId = parsed;

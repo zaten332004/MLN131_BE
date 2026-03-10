@@ -1,8 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using MLN131.Api.Contracts.Responses;
 using MLN131.Api.Data;
+using MLN131.Api.Hubs;
+using MLN131.Api.Services;
 
 namespace MLN131.Api.Controllers;
 
@@ -13,11 +16,19 @@ public sealed class ResponsesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly TimeProvider _time;
+    private readonly StatsService _stats;
+    private readonly IHubContext<StatsHub> _hub;
 
-    public ResponsesController(ApplicationDbContext db, TimeProvider time)
+    public ResponsesController(
+        ApplicationDbContext db,
+        TimeProvider time,
+        StatsService stats,
+        IHubContext<StatsHub> hub)
     {
         _db = db;
         _time = time;
+        _stats = stats;
+        _hub = hub;
     }
 
     [HttpPost]
@@ -45,6 +56,18 @@ public sealed class ResponsesController : ControllerBase
         });
 
         await _db.SaveChangesAsync(ct);
+
+        // Push stats update immediately for admin dashboard (also kept fresh by background broadcaster).
+        try
+        {
+            var payload = await _stats.GetRealtimeAsync(ct);
+            await _hub.Clients.All.SendAsync("realtimeStats", payload, ct);
+        }
+        catch
+        {
+            // Ignore; background broadcaster will retry.
+        }
+
         return Ok();
     }
 }
