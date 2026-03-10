@@ -26,7 +26,7 @@ Sau đó chỉnh connection string trong `src/MLN131.Api/appsettings.json` (mặ
 Mở `src/MLN131.Api/appsettings.json`:
 
 - **`Jwt:SigningKey`**: đổi thành một secret dài, ngẫu nhiên
-- **`Gemini:ApiKey`**: điền API key Gemini nếu dùng chat AI
+- **`Gemini:ApiKey`**: điền API key Gemini nếu dùng chat AI (không nên commit lên git; nên set qua User Secrets hoặc environment variable `Gemini__ApiKey`)
 - **`SeedAdmin:Email` / `SeedAdmin:Password`**: (tuỳ chọn) để tự tạo admin khi chạy lần đầu
 
 ## Chạy server
