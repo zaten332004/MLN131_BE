@@ -167,7 +167,14 @@ if (!app.Environment.IsDevelopment())
     app.UseForwardedHeaders(forwarded);
 }
 
-app.UseHttpsRedirection();
+// Health endpoint should work over plain HTTP (used by Docker healthchecks).
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
+
+// Redirect everything else to HTTPS when appropriate.
+app.UseWhen(
+    ctx => !ctx.Request.Path.StartsWithSegments("/health"),
+    x => x.UseHttpsRedirection());
+
 app.UseStaticFiles();
 app.UseCors();
 
@@ -178,7 +185,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<StatsHub>("/hubs/stats");
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 
 await SeedData.EnsureSeededAsync(app.Services);
 
