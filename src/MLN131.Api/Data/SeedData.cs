@@ -45,6 +45,7 @@ public static class SeedData
         var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var adminEmail = (config["SeedAdmin:Email"] ?? "").Trim();
         var adminPassword = config["SeedAdmin:Password"] ?? "";
+        var forceResetPassword = bool.TryParse(config["SeedAdmin:ForceResetPassword"], out var v) && v;
 
         if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
         {
@@ -65,6 +66,16 @@ public static class SeedData
                 if (!create.Succeeded)
                 {
                     throw new InvalidOperationException("Seed admin failed: " + string.Join("; ", create.Errors.Select(e => e.Description)));
+                }
+            }
+            else if (forceResetPassword)
+            {
+                var token = await userManager.GeneratePasswordResetTokenAsync(admin);
+                var reset = await userManager.ResetPasswordAsync(admin, token, adminPassword);
+                if (!reset.Succeeded)
+                {
+                    throw new InvalidOperationException("Seed admin password reset failed: " +
+                                                        string.Join("; ", reset.Errors.Select(e => e.Description)));
                 }
             }
 
