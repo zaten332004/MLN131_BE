@@ -13,6 +13,45 @@ services:
       - mln131_network
     volumes:
       - mln131_sql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "(/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${SA_PASSWORD}\" -Q \"SELECT 1\" >/dev/null 2>&1) || (/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${SA_PASSWORD}\" -Q \"SELECT 1\" >/dev/null 2>&1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 40s
+
+  sql-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mln131_sql_init
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - mln131_network
+    entrypoint: ["/bin/bash", "-lc"]
+    command: >
+      SQLCMD_BIN=$$(command -v /opt/mssql-tools18/bin/sqlcmd >/dev/null 2>&1 && echo /opt/mssql-tools18/bin/sqlcmd || echo /opt/mssql-tools/bin/sqlcmd);
+      $$SQLCMD_BIN -S sql-server -U sa -P "$$SA_PASSWORD" -v DB_USER="$$DB_USER" -v DB_PASSWORD="$$DB_PASSWORD" -Q "
+      IF DB_ID(N'MLN131') IS NULL BEGIN CREATE DATABASE [MLN131]; END;
+      IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'$(DB_USER)')
+        BEGIN
+          DECLARE @sql nvarchar(max) =
+            N'CREATE LOGIN [' + REPLACE(N'$(DB_USER)', ']', ']]') + N'] WITH PASSWORD = ''' + REPLACE(N'$(DB_PASSWORD)', '''', '''''') + N''', CHECK_POLICY = OFF, CHECK_EXPIRATION = OFF;';
+          EXEC(@sql);
+        END;
+      USE [MLN131];
+      IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'$(DB_USER)')
+        BEGIN
+          DECLARE @sql2 nvarchar(max) =
+            N'CREATE USER [' + REPLACE(N'$(DB_USER)', ']', ']]') + N'] FOR LOGIN [' + REPLACE(N'$(DB_USER)', ']', ']]') + N'];';
+          EXEC(@sql2);
+        END;
+      EXEC sp_addrolemember N'db_owner', N'$(DB_USER)';
+      "
 
   backend:
     build:
@@ -22,11 +61,12 @@ services:
     ports:
       - "8000:8080"
     depends_on:
-      - sql-server
+      sql-init:
+        condition: service_completed_successfully
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__Default: Server=sql-server;Database=MLN131;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true
+      ConnectionStrings__Default: Server=sql-server;Database=MLN131;User Id=${DB_USER:-mln131};Password=${DB_PASSWORD:-12345};TrustServerCertificate=True;MultipleActiveResultSets=true
       Jwt__SigningKey: ${JWT_SIGNING_KEY}
       Jwt__Issuer: MLN131
       Jwt__Audience: MLN131
