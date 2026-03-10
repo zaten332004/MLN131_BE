@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -154,6 +155,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Support running behind reverse proxies (nginx/caddy) in production.
+if (!app.Environment.IsDevelopment())
+{
+    var forwarded = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    };
+    forwarded.KnownNetworks.Clear();
+    forwarded.KnownProxies.Clear();
+    app.UseForwardedHeaders(forwarded);
+}
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseCors();
@@ -165,6 +178,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<StatsHub>("/hubs/stats");
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 
 await SeedData.EnsureSeededAsync(app.Services);
 

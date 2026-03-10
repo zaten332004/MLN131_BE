@@ -25,6 +25,7 @@ services:
       - sql-server
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Default: Server=sql-server;Database=MLN131;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true
       Jwt__SigningKey: ${JWT_SIGNING_KEY}
       Jwt__Issuer: MLN131
@@ -35,6 +36,12 @@ services:
       SeedAdmin__Password: ${SEED_ADMIN_PASSWORD:-}
     networks:
       - mln131_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   mln131_network:

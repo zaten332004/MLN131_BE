@@ -11,7 +11,27 @@ public static class SeedData
         using var scope = sp.CreateScope();
 
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await db.Database.MigrateAsync(ct);
+        var logger = scope.ServiceProvider
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("SeedData");
+
+        // In containers, SQL Server might not be ready yet. Retry migrations for a short window.
+        const int maxRetries = 10;
+        var delay = TimeSpan.FromSeconds(2);
+
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                logger.LogInformation("Applying database migrations (attempt {attempt}/{maxRetries})", attempt, maxRetries);
+                await db.Database.MigrateAsync(ct);
+                break;
+            }
+            catch when (attempt < maxRetries)
+            {
+                await Task.Delay(delay, ct);
+            }
+        }
 
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         foreach (var role in Roles.All)
