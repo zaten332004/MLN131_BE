@@ -70,6 +70,38 @@ public sealed class TrackingController : ControllerBase
         var path = (req.Path ?? "/").Trim();
         if (string.IsNullOrWhiteSpace(path)) path = "/";
 
+        if (!req.Active)
+        {
+            var session = await _db.VisitSessions
+                .Where(s => s.Id == sessionId && s.EndedAt == null)
+                .FirstOrDefaultAsync(ct);
+
+            if (session is not null)
+            {
+                session.LastSeenAt = now;
+                session.EndedAt = now;
+                await _db.SaveChangesAsync(ct);
+            }
+
+            // Push stats update immediately for admin dashboard (also kept fresh by background broadcaster).
+            try
+            {
+                var statsPayload = await _stats.GetRealtimeAsync(ct);
+                await _hub.Clients.All.SendAsync("realtimeStats", statsPayload, ct);
+            }
+            catch
+            {
+                // Ignore; background broadcaster will retry.
+            }
+
+            return Ok(new PageViewResponse
+            {
+                AsOf = now,
+                Path = path,
+                Online = await CountOnlineOnPathAsync(path, now, ct)
+            });
+        }
+
         _db.PageViewEvents.Add(new PageViewEvent
         {
             VisitSessionId = sessionId,
@@ -81,21 +113,7 @@ public sealed class TrackingController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
 
-        var onlineCutoff = now.Add(-PresenceWindow);
-
-        IQueryable<Guid> adminUserIds = GetAdminUserIdsQuery(_db);
-
-        var onlineSessionIds = _db.VisitSessions.AsNoTracking()
-            .Where(s => s.EndedAt == null && s.LastSeenAt >= onlineCutoff)
-            .Select(s => s.Id);
-
-        var onlineOnPath = await _db.PageViewEvents.AsNoTracking()
-            .Where(e => e.Path == path && e.OccurredAt >= onlineCutoff)
-            .Where(e => e.UserId == null || !adminUserIds.Contains(e.UserId.Value))
-            .Where(e => onlineSessionIds.Contains(e.VisitSessionId))
-            .Select(e => e.VisitSessionId)
-            .Distinct()
-            .CountAsync(ct);
+        var onlineOnPath = await CountOnlineOnPathAsync(path, now, ct);
 
         // Push stats update immediately for admin dashboard (also kept fresh by background broadcaster).
         try
@@ -114,6 +132,24 @@ public sealed class TrackingController : ControllerBase
             Path = path,
             Online = onlineOnPath
         });
+    }
+
+    private async Task<int> CountOnlineOnPathAsync(string path, DateTimeOffset now, CancellationToken ct)
+    {
+        var onlineCutoff = now.Add(-PresenceWindow);
+        IQueryable<Guid> adminUserIds = GetAdminUserIdsQuery(_db);
+
+        var onlineSessionIds = _db.VisitSessions.AsNoTracking()
+            .Where(s => s.EndedAt == null && s.LastSeenAt >= onlineCutoff)
+            .Select(s => s.Id);
+
+        return await _db.PageViewEvents.AsNoTracking()
+            .Where(e => e.Path == path && e.OccurredAt >= onlineCutoff)
+            .Where(e => e.UserId == null || !adminUserIds.Contains(e.UserId.Value))
+            .Where(e => onlineSessionIds.Contains(e.VisitSessionId))
+            .Select(e => e.VisitSessionId)
+            .Distinct()
+            .CountAsync(ct);
     }
 
     private static IQueryable<Guid> GetAdminUserIdsQuery(ApplicationDbContext db)
