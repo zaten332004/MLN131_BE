@@ -163,3 +163,4 @@ d:\GitHub\MLN131_BE\.build-out\MLN131.Api.dll
 d:\GitHub\MLN131_BE\.build-out\MLN131.Api.pdb
 d:\GitHub\MLN131_BE\.build-out\MLN131.Api.staticwebassets.runtime.json
 D:\GitHub\MLN131_BE\src\MLN131.Api\bin\Debug\net8.0\MLN131.Api.staticwebassets.runtime.json
+D:\GitHub\MLN131_BE\src\MLN131.Api\obj\Debug\net8.0\MLN131.Api.sourcelink.json
