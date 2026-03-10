@@ -1,0 +1,19 @@
+version: '3.8'
+
+# Use this when you already have SQL Server / SQLEXPRESS running on the host machine
+# (e.g. Windows) with login `sa` / `12345`, and you only want to run the backend in Docker.
+#
+# Run:
+#   docker compose -f docker-compose.yml -f docker-compose.hostsql.yml up -d --build backend
+#
+# Notes:
+# - Ensure SQL Server has TCP enabled and is listening on port 1433.
+# - Allow inbound firewall for TCP 1433 on the host.
+services:
+  backend:
+    depends_on: {}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      ConnectionStrings__Default: Server=host.docker.internal,1433;Database=MLN131;User Id=sa;Password=12345;TrustServerCertificate=True;MultipleActiveResultSets=true;Connection Timeout=30;
+

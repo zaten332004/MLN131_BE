@@ -43,6 +43,19 @@ Khi chạy, server sẽ tự:
 
 Swagger: mở `/swagger`
 
+## Docker + SQL Server trên máy host (sa/12345)
+
+Trường hợp bạn đã có SQL Server/SQLEXPRESS trên máy (Windows) và muốn chạy **chỉ backend** bằng Docker.
+
+1) Bật TCP/IP cho SQL Server và đặt port cố định `1433` (SQL Server Configuration Manager), mở firewall `TCP 1433`.
+2) Chạy backend container và trỏ connection string vào host:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.hostsql.yml up -d --build backend
+```
+
+Nếu bạn muốn docker hoá toàn bộ (SQL Server trong container), dùng `docker-compose.yml` + `.env` (SA_PASSWORD phải mạnh; backend có DB_USER/DB_PASSWORD=12345).
+
 ## API chính (tóm tắt)
 
 ### Auth
