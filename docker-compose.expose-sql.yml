@@ -1,0 +1,9 @@
+version: '3.8'
+
+# Optional: expose SQL Server port to the host for debugging with SSMS.
+# Avoid 1433 if your host already runs SQL Server/SQLEXPRESS.
+services:
+  sql-server:
+    ports:
+      - "14330:1433"
+

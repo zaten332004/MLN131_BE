@@ -4,8 +4,8 @@ services:
   sql-server:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: mln131_sql_server
-    ports:
-      - "1433:1433"
+    # No host port binding by default (avoids conflicts with local SQL Server/SQLEXPRESS).
+    # If you need to connect from host (SSMS), use docker-compose.expose-sql.yml.
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${SA_PASSWORD}

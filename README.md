@@ -56,6 +56,14 @@ docker compose -f docker-compose.yml -f docker-compose.hostsql.yml up -d --build
 
 Nếu bạn muốn docker hoá toàn bộ (SQL Server trong container), dùng `docker-compose.yml` + `.env` (SA_PASSWORD phải mạnh; backend có DB_USER/DB_PASSWORD=12345).
 
+Lưu ý:
+- SQL Server container **không cho phép** `SA_PASSWORD=12345` (bắt buộc mật khẩu mạnh).
+- Nếu máy host đang chạy SQL Server/SQLEXPRESS, port `1433` có thể bị chiếm. Compose mặc định **không bind** port SQL ra host; nếu cần debug bằng SSMS, dùng:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.expose-sql.yml up -d
+```
+
 ## API chính (tóm tắt)
 
 ### Auth
