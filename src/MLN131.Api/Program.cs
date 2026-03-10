@@ -170,10 +170,12 @@ if (!app.Environment.IsDevelopment())
 // Health endpoint should work over plain HTTP (used by Docker healthchecks).
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 
-// Redirect everything else to HTTPS when appropriate.
-app.UseWhen(
-    ctx => !ctx.Request.Path.StartsWithSegments("/health"),
-    x => x.UseHttpsRedirection());
+// In production containers, TLS is typically terminated at a reverse proxy (ngrok/nginx/caddy).
+// Avoid redirecting internal HTTP traffic, which can break CORS preflight and health checks.
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseStaticFiles();
 app.UseCors();
